@@ -1,0 +1,1 @@
+TSocket was changed to run synchronous with emscripten, compile with -s ASYNCIFY=1 and -s DISABLE_EXCEPTION_CATCHING=1
