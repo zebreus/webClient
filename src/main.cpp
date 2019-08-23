@@ -51,15 +51,27 @@ int main(int i, char** c){
 }
 }
 
+bool first = true;
+int frame = 0;
+worker_handle thrift_worker;
+unsigned int pongs = 0;
+char echoAnswer[500];
 
 void cback(char* data, int size, void* arg) {
-    printf("Callback: %s\n", data);
+    std::string type((char*)arg);
+    printf("Callback: %s, %s\n", data, arg);
+    
+    if(type == "ping"){
+		pongs++;
+	}else if(type == "echo"){
+		strcpy(echoAnswer, data);
+	}
+    
 }
 
 // For clarity, our main loop code is declared at the end.
 void main_loop(void*);
 
-emscripten_coroutine co;
 int rmain(int, char**)
 {
 
@@ -120,11 +132,7 @@ int rmain(int, char**)
     return 0;
 }
 
-bool first = true;
-int frame = 0;
-worker_handle wh;
-unsigned int pongs = 0;
-char echoAnswer[500];
+
 
 void main_loop(void* arg)
 {
@@ -132,7 +140,10 @@ void main_loop(void* arg)
 	frame ++;
 	if(first){
 		//emscripten_async_call((em_arg_callback_func)extraTest, nullptr, 1);
-		wh = emscripten_create_worker("worker.js");
+		thrift_worker = emscripten_create_worker("thrift-worker.js");
+		std::string text = "open";
+		std::string funcname = "tw_open";
+		emscripten_call_worker(thrift_worker, funcname.c_str() , 0, 0, cback, (void*)text.c_str() );
 		first = false;
 	}
 	
@@ -140,8 +151,8 @@ void main_loop(void* arg)
 		char data[50];
 		std::string text = "call you";
 		std::string funcname = "callback";
-		emscripten_call_worker(wh, funcname.c_str() , data, 50, cback, (void*)text.c_str() );
-		printf("Got response %s \n", data);
+		
+		//printf("Got response %s \n", data);
 	}
 	
     ImGuiIO& io = ImGui::GetIO();
@@ -169,7 +180,9 @@ void main_loop(void* arg)
         
         ImGui::Text("Ping Test");
         if (ImGui::Button("Ping")){
-			pongs++;
+			std::string text = "ping";
+			std::string funcname = "tw_ping";
+			emscripten_call_worker(thrift_worker, funcname.c_str() , 0, 0, cback, (void*)text.c_str() );
 		}
         ImGui::SameLine();
         ImGui::Text("counter = %d", pongs);
@@ -181,7 +194,11 @@ void main_loop(void* arg)
 		ImGui::Text("Echo Test");
 		ImGui::InputTextMultiline("", textfeld, 500);
 		if (ImGui::Button("Send")){
-			memcpy(echoAnswer, textfeld, 500);
+			char data[500];
+			strcpy(data, textfeld);
+			std::string text = "echo";
+			std::string funcname = "tw_echo";
+			emscripten_call_worker(thrift_worker, funcname.c_str() ,data , 500, cback, (void*)text.c_str() );
 		}
 		ImGui::Spacing();
 		ImGui::Text("Answer:");
