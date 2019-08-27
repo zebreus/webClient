@@ -34,6 +34,7 @@ int main(int, char**)
 	EM_ASM(
 		// Set error callback, to direct errors to our onerror method
 		window.onerror = function(message, source, lineno, colno, error){
+			//Build cstrings from javascript strings
 			var messageLen = lengthBytesUTF8(message);
 			var messagePtr = _malloc(messageLen+1);
 			stringToUTF8(message, messagePtr, messageLen+1);
@@ -41,8 +42,10 @@ int main(int, char**)
 			var sourcePtr = _malloc(sourceLen+1);
 			stringToUTF8(source, sourcePtr, sourceLen+1);
 			
+			//Call error function
 			_onerror(messagePtr, sourcePtr);
 			
+			//Free memory again
 			_free(messagePtr);
 			_free(sourcePtr);
 			
@@ -214,7 +217,7 @@ void main_loop(void* arg)
 		}
 
 		
-		// Download generated files
+		//Download generated files
 		ImGui::Text("Generated certificates:");
 		for(string filename : files){
 			if (ImGui::Button(filename.c_str())){
@@ -225,10 +228,10 @@ void main_loop(void* arg)
 			}
 		}
 		
+		//Display some performance information
 		ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Spacing();
-		
         ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
         ImGui::End();
 	}
