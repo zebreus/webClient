@@ -78,7 +78,7 @@ MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-all: docker docker-build
+all: thrift docker docker-build
 
 $(MAIN)/%.o:$(MAIN)/%.cpp
 	echo OJS: $(MAIN_OBJS) ENDS
@@ -110,28 +110,33 @@ $(EXAMPLE_WORKER_EXE): $(OUTPUT)/$(EXAMPLE_WORKER_EXE)
 $(THRIFT_WORKER_EXE): $(OUTPUT)/$(THRIFT_WORKER_EXE)
 
 $(OUTPUT)/$(MAIN_EXE): $(MAIN_OBJS)
+	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(MAIN_LDFLAGS)
 
 $(OUTPUT)/$(EXAMPLE_WORKER_EXE): $(EXAMPLE_WORKER_OBJS)
+	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(EXAMPLE_WORKER_LDFLAGS)
 
 $(OUTPUT)/$(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
+	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(THRIFT_WORKER_LDFLAGS)
 
 build: $(EXAMPLE_WORKER_EXE) $(MAIN_EXE) $(THRIFT_WORKER_EXE)
 	@echo Build complete for $(MAIN_EXE)
 
 clean:
-	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
+	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS) thrift docker
 
-distclean:
-	rm -rf $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS) docker $(OUTPUT)
+distclean: clean
+	rm -rf docker $(OUTPUT)
 
 execute:
 	cd $(OUTPUT) ; emrun --browser=$(BROWSER) $(MAIN_EXE)
 	
 thrift:
+	mkdir -p $(THRIFT_GENERATED)
 	thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
+	touch thrift
 
 docker:
 	$(DOCKER) build --tag=$(DOCKER_NAME) .
