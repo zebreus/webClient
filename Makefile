@@ -27,7 +27,7 @@ THRIFT_GENERATED = $(THRIFT_WORKER)/gen-cpp/
 IMGUI_GIT = ./libs/imgui/
 THRIFT = ./libs/thrift/
 EMS_SHELL = ./res/shell_minimal.html
-THRIFT_FILE = ./res/example.thrift
+THRIFT_FILE = ./res/CertificateGenerator.thrift
 #TODO schoener
 DEBUG = --emrun
 RELEASE =
@@ -52,7 +52,9 @@ EXAMPLE_WORKER_LDFLAGS = $(EXAMPLE_WORKER_EMS)
 
 THRIFT_WORKER_EXE = thrift-worker.js
 THRIFT_WORKER_SOURCES = $(THRIFT_WORKER)/worker.cpp
-THRIFT_WORKER_SOURCES += $(THRIFT_GENERATED)/Example.cpp
+THRIFT_WORKER_SOURCES += $(THRIFT_GENERATED)/CertificateGenerator.cpp
+THRIFT_WORKER_SOURCES += $(THRIFT_GENERATED)/CertificateGenerator_types.cpp
+THRIFT_WORKER_SOURCES += $(THRIFT_GENERATED)/CertificateGenerator_constants.cpp
 THRIFT_WORKER_SOURCES += $(THRIFT)/TApplicationException.cpp \
                        $(THRIFT)/TOutput.cpp \
                        $(THRIFT)/VirtualProfiling.cpp \
@@ -91,15 +93,16 @@ THRIFT_WORKER_SOURCES += $(THRIFT)/TApplicationException.cpp \
 #THRIFT_WORKER_OBJS = $(addsuffix .o, $(basename $(notdir $(THRIFT_WORKER_SOURCES))))
 THRIFT_WORKER_OBJS = $(addsuffix .o, $(basename $(THRIFT_WORKER_SOURCES)))
 THRIFT_WORKER_EMS = -s WASM=1
-THRIFT_WORKER_EMS += -s ALLOW_MEMORY_GROWTH=0 -s BINARYEN_TRAP_MODE=clamp
+THRIFT_WORKER_EMS += -s ALLOW_MEMORY_GROWTH=0
 THRIFT_WORKER_EMS += -s DISABLE_EXCEPTION_CATCHING=1 -s NO_EXIT_RUNTIME=1
 THRIFT_WORKER_EMS += -s ASSERTIONS=1 -s NO_FILESYSTEM=0
 THRIFT_WORKER_EMS += -s ASYNCIFY=1 -s BUILD_AS_WORKER=1 
-THRIFT_WORKER_EMS += -s EXPORTED_FUNCTIONS='["_tw_open", "_tw_close", "_tw_ping", "_tw_echo", "_main"]'
+THRIFT_WORKER_EMS += -s EXTRA_EXPORTED_RUNTIME_METHODS=FS
+THRIFT_WORKER_EMS += -s EXPORTED_FUNCTIONS='["_tw_open", "_tw_close", "_tw_generateCertificates", "_main"]'
 #-s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]'  -s 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap", "stringToUTF8"]'
 THRIFT_WORKER_CPP = -Wall -Wformat -Os -std=c++17
 THRIFT_WORKER_CPP += -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H
-THRIFT_WORKER_CPP += -I$(THRIFT_WORKER) -I$(THRIFT)/../ -I/home/creator/Downloads/boost_1_70_0
+THRIFT_WORKER_CPP += -I$(THRIFT_WORKER) -I$(THRIFT_GENERATED) -I$(THRIFT)/../ -I/home/creator/Downloads/boost_1_70_0
 THRIFT_WORKER_CPP += $(THRIFT_WORKER_EMS)
 THRIFT_WORKER_LDFLAGS = -L/home/creator/Downloads/boost_1_70_0/stage/lib $(THRIFT_WORKER_EMS)
 
@@ -111,16 +114,18 @@ MAIN_OBJS = $(addsuffix .o, $(basename $(MAIN_SOURCES)))
 #MAIN_OBJS = $(addsuffix .o, $(basename $(notdir $(MAIN_SOURCES))))
 UNAME_S := $(shell uname -s)
 
-MAIN_EMS = -s USE_SDL=2 -s WASM=1
+MAIN_EMS = --bind -s USE_SDL=2 -s WASM=1
 MAIN_EMS += -s ALLOW_MEMORY_GROWTH=0 -s BINARYEN_TRAP_MODE=clamp
 MAIN_EMS += -s DISABLE_EXCEPTION_CATCHING=1 -s NO_EXIT_RUNTIME=0
-MAIN_EMS += -s ASSERTIONS=1 -s NO_FILESYSTEM=1
+MAIN_EMS += -s ASSERTIONS=1 -s NO_FILESYSTEM=0
 MAIN_EMS += -s ASYNCIFY=1 -s EXPORTED_FUNCTIONS='["_onerror", "_main"]'
+MAIN_EMS += -s EXTRA_EXPORTED_RUNTIME_METHODS=FS
 #MAIN_EMS += -s SAFE_HEAP=1    ## Adds overhead
 
 MAIN_CPP = -I$(IMGUI_GIT)/examples/ -I$(IMGUI_GIT)
 MAIN_CPP += -Wall -Wformat -Os -std=c++17
-MAIN_CPP += $(MAIN_EMS)
+MAIN_CPP += -DTHRIFT_WORKER_FILE=\"$(THRIFT_WORKER_EXE)\"
+MAIN_CPP += $(MAIN_EMS) 
 MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 
 ##---------------------------------------------------------------------
@@ -166,9 +171,6 @@ $(EXAMPLE_WORKER_EXE): $(EXAMPLE_WORKER_OBJS)
 
 $(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
 	$(CXX) -o $(OUTPUT)/$@ $^ $(THRIFT_WORKER_LDFLAGS)
-
-#$(EXAMPLE_WORKER_EXE): $(EXAMPLE_WORKER_SOURCES)
-#	$(CXX) $(EXAMPLE_WORKER_CPP) -o $@ $^
 
 clean:
 	rm -f $(MAIN_EXE) $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS) *.js *.wasm *.wasm.pre $(OUTPUT)/*

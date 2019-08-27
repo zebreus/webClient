@@ -1,36 +1,38 @@
-// dear imgui: standalone example application for Emscripten, using SDL2 + OpenGL3
-// This is mostly the same code as the SDL2 + OpenGL3 example, simply with the modifications needed to run on Emscripten.
-// It is possible to combine both code into a single source file that will compile properly on Desktop and using Emscripten.
-// See https://github.com/ocornut/imgui/pull/2492 as an example on how to do just that.
-//
-// If you are new to dear imgui, see examples/README.txt and documentation at the top of imgui.cpp.
-// (Emscripten is a C++-to-javascript compiler, used to publish executables for the web. See https://emscripten.org/)
+#include "main.hpp"
 
-#include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl3.h"
-#include <stdio.h>
-#include <emscripten.h>
-#include <string>
-//#include <emscripten/bind.h>
-#include <SDL.h>
-#include <SDL_opengles2.h>
+void thriftOpenCallback(char* data, int size, void* arg){
+	printf("OpenCallback: %s, %s\n", data, arg);
+	connectionState = READY;
+}
 
-// Emscripten requires to have full control over the main loop. We're going to store our SDL book-keeping variables globally.
-// Having a single function that acts as a loop prevents us to store state in the stack of said function. So we need some location for this.
-SDL_Window*     g_Window = NULL;
-SDL_GLContext   g_GLContext = NULL;
+void thriftCloseCallback(char* data, int size, void* arg){
+	printf("CloseCallback: %s, %s\n", data, arg);
+	emscripten_destroy_worker(thriftWorker);
+	connectionState = CLOSED;
+}
 
-//using namespace emscripten;
+void thriftGenerateCallback(char* data, int size, void* arg){
+	printf("GenerateCallback: %s, %s\n", data, arg);
+	if(size != 0){
+		files.push_back(string(data));
+	}else{
+		connectionState = READY;
+	}
+}
 
-int rmain(int, char**);
-
-extern "C" {
 void onerror(const char* message,const char* source){
 	printf("ERROR %s %s\n",message,source);
+	string sourceString(source);
+	if(sourceString.find(THRIFT_WORKER_FILE)){
+		emscripten_destroy_worker(thriftWorker);
+		connectionState = ERROR;
+	}
 }
-int main(int i, char** c){
+
+int main(int, char**)
+{
 	EM_ASM(
+		// Set error callback, to direct errors to our onerror method
 		window.onerror = function(message, source, lineno, colno, error){
 			var messageLen = lengthBytesUTF8(message);
 			var messagePtr = _malloc(messageLen+1);
@@ -47,34 +49,15 @@ int main(int i, char** c){
 			return false;
 		}
 	);
-	rmain(i,c);
-}
-}
-
-bool first = true;
-int frame = 0;
-worker_handle thrift_worker;
-unsigned int pongs = 0;
-char echoAnswer[500];
-
-void cback(char* data, int size, void* arg) {
-    std::string type((char*)arg);
-    printf("Callback: %s, %s\n", data, arg);
-    
-    if(type == "ping"){
-		pongs++;
-	}else if(type == "echo"){
-		strcpy(echoAnswer, data);
-	}
-    
-}
-
-// For clarity, our main loop code is declared at the end.
-void main_loop(void*);
-
-int rmain(int, char**)
-{
-
+	EM_ASM(
+		// Mount IndexDBFS to /generated. This is, where the worker
+		// will place the generated files
+		FS.mkdir('/generated');
+		FS.mount(IDBFS, {}, '/generated');
+		FS.syncfs(true, function (err) {
+		});
+	);
+	
     // Setup SDL
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
@@ -82,11 +65,10 @@ int rmain(int, char**)
         return -1;
     }
 
-    // For the browser using Emscripten, we are going to use WebGL1 with GL ES2. See the Makefile. for requirement details.
+    // For the browser using Emscripten, we are going to use WebGL1 with GL ES2.
     // It is very likely the generated file won't work in many browsers. Firefox is the only sure bet, but I have successfully
     // run this code on Chrome for Android for example.
     const char* glsl_version = "#version 100";
-    //const char* glsl_version = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
@@ -106,14 +88,12 @@ int rmain(int, char**)
         fprintf(stderr, "Failed to initialize WebGL context!\n");
         return 1;
     }
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_GL_SetSwapInterval(1);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
     // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
@@ -127,7 +107,7 @@ int rmain(int, char**)
     ImGui_ImplSDL2_InitForOpenGL(g_Window, g_GLContext);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // This function call won't return, and will engage in an infinite loop, processing events from the browser, and dispatching them.
+    // Start the main loop
     emscripten_set_main_loop_arg(main_loop, NULL, 0, true);
     return 0;
 }
@@ -136,27 +116,9 @@ int rmain(int, char**)
 
 void main_loop(void* arg)
 {
-	//emscripten_sleep(1);
-	frame ++;
-	if(first){
-		//emscripten_async_call((em_arg_callback_func)extraTest, nullptr, 1);
-		thrift_worker = emscripten_create_worker("thrift-worker.js");
-		std::string text = "open";
-		std::string funcname = "tw_open";
-		emscripten_call_worker(thrift_worker, funcname.c_str() , 0, 0, cback, (void*)text.c_str() );
-		first = false;
-	}
-	
-	if(frame%200 == 1){
-		char data[50];
-		std::string text = "call you";
-		std::string funcname = "callback";
-		
-		//printf("Got response %s \n", data);
-	}
 	
     ImGuiIO& io = ImGui::GetIO();
-    IM_UNUSED(arg); // We can pass this argument as the second parameter of emscripten_set_main_loop_arg(), but we don't use that.
+    IM_UNUSED(arg);
 
     // Our state (make them static = more or less global) as a convenience to keep the example terse.
     static ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -174,35 +136,94 @@ void main_loop(void* arg)
     ImGui::NewFrame();
 
 	{
-		static char textfeld[500];
-
-        ImGui::Begin("Emscripten Test");
+		static char hostname[100] = "localhost";
+		static int hostport = 9090;
+		
+		//Open new window
+        ImGui::Begin("Certificate Generator", NULL, ImGuiWindowFlags_AlwaysAutoResize);
         
-        ImGui::Text("Ping Test");
-        if (ImGui::Button("Ping")){
-			std::string text = "ping";
-			std::string funcname = "tw_ping";
-			emscripten_call_worker(thrift_worker, funcname.c_str() , 0, 0, cback, (void*)text.c_str() );
+        // Display state
+        string state;
+        switch(connectionState){
+			case CLOSED:
+				state = "CLOSED";
+				break;
+			case OPENING:
+				state = "OPENING";
+				break;
+			case CLOSING:
+				state = "CLOSING";
+				break;
+			case READY:
+				state = "READY";
+				break;
+			case GENERATING:
+				state = "GENERATING";
+				break;
+			case ERROR:
+				state = "ERROR";
+				break;
 		}
-        ImGui::SameLine();
-        ImGui::Text("counter = %d", pongs);
+		ImGui::Text("STATE: %s", state.c_str());
 		
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
+		//Read Servername and port
+		ImGui::InputText("Hostname", hostname, 100);
+		ImGui::InputInt("Port", &hostport);
 		
-		ImGui::Text("Echo Test");
-		ImGui::InputTextMultiline("", textfeld, 500);
-		if (ImGui::Button("Send")){
-			char data[500];
-			strcpy(data, textfeld);
-			std::string text = "echo";
-			std::string funcname = "tw_echo";
-			emscripten_call_worker(thrift_worker, funcname.c_str() ,data , 500, cback, (void*)text.c_str() );
+		//Button to open/close connection
+		if(connectionState == CLOSED || connectionState == ERROR){
+			if (ImGui::Button("Open")){
+				thriftWorker = emscripten_create_worker(THRIFT_WORKER_FILE);
+				std::string funcname = "tw_open";
+				std::string addressString(hostname);
+				addressString.append(":");
+				addressString.append(to_string(hostport));
+				char* address = new char[addressString.size()+1];
+				memcpy(address, addressString.c_str(), addressString.size()+1);
+				emscripten_call_worker(thriftWorker, funcname.c_str() , address, addressString.size()+1, thriftOpenCallback, 0);
+				delete[] address;
+				connectionState = OPENING;
+			}
+		}else if(connectionState == READY){
+			if (ImGui::Button("Close")){
+				std::string funcname = "tw_close";
+				emscripten_call_worker(thriftWorker, funcname.c_str() , 0, 0, thriftCloseCallback, 0);
+				connectionState = CLOSING;
+			}
+		}else{
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+			ImGui::Button("Open");
+			ImGui::PopStyleVar();
 		}
-		ImGui::Spacing();
-		ImGui::Text("Answer:");
-		ImGui::TextWrapped("%s", echoAnswer);
+		
+		//Button to generate certificates
+		if(connectionState == READY){
+			if (ImGui::Button("Generate certificates")){
+				if(connectionState == READY){
+					std::string funcname = "tw_generateCertificates";
+					files.clear();
+					emscripten_call_worker(thriftWorker, funcname.c_str() , 0, 0, thriftGenerateCallback, 0);
+					connectionState = GENERATING;
+				}
+			}
+		}
+		if(connectionState != READY){
+			ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+			ImGui::Button("Generate certificates");
+			ImGui::PopStyleVar();
+		}
+
+		
+		// Download generated files
+		ImGui::Text("Generated certificates:");
+		for(string filename : files){
+			if (ImGui::Button(filename.c_str())){
+				char* cFilename = new char[filename.size()+1];
+				std::memcpy(cFilename, filename.c_str(), filename.size()+1);
+				downloadFile(cFilename,"application/pdf");
+				delete[] cFilename;
+			}
+		}
 		
 		ImGui::Spacing();
 		ImGui::Separator();
