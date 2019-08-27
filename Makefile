@@ -78,7 +78,7 @@ MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-all: thrift docker docker-build
+all: docker docker-build
 
 $(MAIN)/%.o:$(MAIN)/%.cpp
 	echo OJS: $(MAIN_OBJS) ENDS
@@ -107,7 +107,7 @@ $(THRIFT)/*/%.o:$(THRIFT)/*/%.cpp
 
 $(MAIN_EXE): $(OUTPUT)/$(MAIN_EXE)
 $(EXAMPLE_WORKER_EXE): $(OUTPUT)/$(EXAMPLE_WORKER_EXE)
-$(THRIFT_WORKER_EXE): $(OUTPUT)/$(THRIFT_WORKER_EXE)
+$(THRIFT_WORKER_EXE): thrift $(OUTPUT)/$(THRIFT_WORKER_EXE)
 
 $(OUTPUT)/$(MAIN_EXE): $(MAIN_OBJS)
 	mkdir -p $(OUTPUT)

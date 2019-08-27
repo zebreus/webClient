@@ -11,5 +11,16 @@ RUN mkdir -p /tmp/boost ;\
 	mv /tmp/boost/boost_*/boost /emsdk_portable/sdk/system/include/ ;\
 	rm -rf /tmp/boost
 
-
+RUN apt update ;\
+	apt install -y libtool automake autoconf flex bison pkg-config ;\
+	mkdir -p /tmp/thrift/ ;\
+	cd /tmp/thrift/ ;\
+	git clone https://github.com/apache/thrift.git ;\
+	cd /tmp/thrift/thrift/ ;\
+	./bootstrap.sh ;\
+	./configure --enable-libs=no --enable-tests=no --enable-tutorial=no --bindir=/usr/bin;\
+	make ;\
+	make install ;\
+	rm -rf /tmp/thrift ;\
+	apt remove -y libtool automake pkg-config
 
