@@ -10,8 +10,8 @@ EMS_SHELL = ./res/shell_minimal.html
 THRIFT_FILE = ./res/CertificateGenerator.thrift
 
 #compiler
-CC = emcc
-CXX = em++
+CC = emcc --emrun
+CXX = em++ --emrun
 DOCKER = docker
 BROWSER = chrome
 
@@ -52,12 +52,10 @@ THRIFT_WORKER_EMS += -s EXPORTED_FUNCTIONS='["_tw_open", "_tw_close", "_tw_gener
 THRIFT_WORKER_CPP = -Wall -Wformat -Os -std=c++17
 THRIFT_WORKER_CPP += -DHAVE_INTTYPES_H -DHAVE_NETINET_IN_H
 THRIFT_WORKER_CPP += -I$(THRIFT_WORKER) -I$(THRIFT_GENERATED) -I$(THRIFT)/../
-#THRIFT_WORKER_CPP += -I/home/creator/Downloads/boost_1_70_0 -Iboost
 THRIFT_WORKER_CPP += $(THRIFT_WORKER_EMS)
 THRIFT_WORKER_LDFLAGS = $(THRIFT_WORKER_EMS)
-#THRIFT_WORKER_LDFLAGS += -L/home/creator/Downloads/boost_1_70_0/stage/lib
 
-MAIN_EXE = example_emscripten.html
+MAIN_EXE = webclient.html
 MAIN_SOURCES = $(MAIN)/main.cpp
 MAIN_SOURCES += $(IMGUI_GIT)/examples/imgui_impl_sdl.cpp $(IMGUI_GIT)/examples/imgui_impl_opengl3.cpp
 MAIN_SOURCES += $(IMGUI_GIT)/imgui.cpp $(IMGUI_GIT)/imgui_demo.cpp $(IMGUI_GIT)/imgui_draw.cpp $(IMGUI_GIT)/imgui_widgets.cpp
@@ -78,7 +76,7 @@ MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-all: docker docker-build
+all: docker-build
 
 $(MAIN)/%.o:$(MAIN)/%.cpp
 	echo OJS: $(MAIN_OBJS) ENDS
@@ -125,22 +123,29 @@ build: $(EXAMPLE_WORKER_EXE) $(MAIN_EXE) $(THRIFT_WORKER_EXE)
 	@echo Build complete for $(MAIN_EXE)
 
 clean:
-	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS) thrift docker
+	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
 
 distclean: clean
-	rm -rf docker $(OUTPUT)
+	rm -rf docker.gen thrift.gen $(OUTPUT) $(THRIFT_GENERATED)
 
 execute:
 	cd $(OUTPUT) ; emrun --browser=$(BROWSER) $(MAIN_EXE)
 	
-thrift:
+thrift: thrift.gen
 	mkdir -p $(THRIFT_GENERATED)
-	thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
-	touch thrift
+	thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE) 
 
-docker:
+docker: docker.gen
 	$(DOCKER) build --tag=$(DOCKER_NAME) .
-	touch docker
 	
-docker-build:
+docker-build: docker docker-thrift
 	$(DOCKER_EXECUTE) make build
+	
+docker-thrift: docker thrift.gen
+	$(DOCKER_EXECUTE) make thrift
+	
+thrift.gen:
+	touch thrift.gen
+	
+docker.gen:
+	touch docker.gen
