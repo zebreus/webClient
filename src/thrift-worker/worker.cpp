@@ -6,10 +6,16 @@ void tw_open(char* data, int size){
 	
 	if(address.find("wss://") == 0){
 		address = address.substr(6, string::npos);
-		EM_ASM( Module["websocket"]={url:"wss://"}; );
+		EM_ASM(
+			Module['websocket'].url='wss://';
+			Module['websocket'].subprotocol='binary';
+		);
 	}else if(address.find("ws://") == 0){
 		address = address.substr(5, string::npos);
-		EM_ASM( Module["websocket"]={url:"ws://"}; );
+		EM_ASM(
+			Module['websocket'].url='ws://';
+			Module['websocket'].subprotocol='binary';
+		);
 	}
 	
 	
