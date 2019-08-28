@@ -55,7 +55,7 @@ THRIFT_WORKER_CPP += -I$(THRIFT_WORKER) -I$(THRIFT_GENERATED) -I$(THRIFT)/../
 THRIFT_WORKER_CPP += $(THRIFT_WORKER_EMS)
 THRIFT_WORKER_LDFLAGS = $(THRIFT_WORKER_EMS)
 
-MAIN_EXE = webclient.html
+MAIN_EXE = index.html
 MAIN_SOURCES = $(MAIN)/main.cpp
 MAIN_SOURCES += $(IMGUI_GIT)/examples/imgui_impl_sdl.cpp $(IMGUI_GIT)/examples/imgui_impl_opengl3.cpp
 MAIN_SOURCES += $(IMGUI_GIT)/imgui.cpp $(IMGUI_GIT)/imgui_demo.cpp $(IMGUI_GIT)/imgui_draw.cpp $(IMGUI_GIT)/imgui_widgets.cpp
