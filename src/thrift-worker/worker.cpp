@@ -3,6 +3,16 @@
 void tw_open(char* data, int size){
 	//Get address
 	string address(data);
+	
+	if(address.find("wss://") == 0){
+		address = address.substr(6, string::npos);
+		EM_ASM( Module["websocket"]={url:"wss://"}; );
+	}else if(address.find("ws://") == 0){
+		address = address.substr(5, string::npos);
+		EM_ASM( Module["websocket"]={url:"ws://"}; );
+	}
+	
+	
 	int seperator = address.find_last_of(":");
 	if(seperator == string::npos){
 		//TODO find right thing to throw

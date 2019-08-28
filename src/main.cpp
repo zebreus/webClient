@@ -141,6 +141,7 @@ void main_loop(void* arg)
 	{
 		static char hostname[100] = "localhost";
 		static int hostport = 9090;
+		static bool wss = true;
 		
 		//Open new window
         ImGui::Begin("Certificate Generator", NULL, ImGuiWindowFlags_AlwaysAutoResize);
@@ -169,6 +170,10 @@ void main_loop(void* arg)
 		}
 		ImGui::Text("STATE: %s", state.c_str());
 		
+		
+		//Check if we use a encrypted connection
+		ImGui::Checkbox("wss://", &wss);
+		
 		//Read Servername and port
 		ImGui::InputText("Hostname", hostname, 100);
 		ImGui::InputInt("Port", &hostport);
@@ -178,7 +183,13 @@ void main_loop(void* arg)
 			if (ImGui::Button("Open")){
 				thriftWorker = emscripten_create_worker(THRIFT_WORKER_FILE);
 				std::string funcname = "tw_open";
-				std::string addressString(hostname);
+				std::string addressString;
+				if(wss){
+					addressString.append("wss://");
+				}else{
+					addressString.append("ws://");
+				}
+				addressString.append( string(hostname) );
 				addressString.append(":");
 				addressString.append(to_string(hostport));
 				char* address = new char[addressString.size()+1];
