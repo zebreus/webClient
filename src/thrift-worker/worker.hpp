@@ -54,6 +54,35 @@ string example_data = "{\
 \"tester\":\"Someone Important\"\
 }\
 ";
+//example_template_1.tex aus dem certificate-generator
+string certificateTemplate = 
+"\\documentclass[a4paper]{article}\n\
+\\usepackage[utf8]{inputenc}\n\
+\\usepackage[T1]{fontenc}\n\
+\\usepackage{lmodern}\n\
+\\usepackage[german]{babel}\n\
+\\usepackage{amsmath}\n\
+\\usepackage{certificate-generator}\n\
+\\usepackage{ifthen}\n\
+\\title{Certificate of Existence}\n\
+\\author{\\substitude{name}}\n\
+\\date{\\substitude{date}}\n\
+\\begin{document}\n\
+\\maketitle\n\
+\\section{Certificate}\n\
+\\subsection{Text}\n\
+\\substitude[student]{name} \\substitude{surname} you are a great person and on \\substitude{date} you have proven your existence by completing the following tasks:\n\
+\\subsection{Tasks}\n\
+\\begin{tabular}{ l | c }\n\
+\\hline\n\
+Task & Rating \\\\ \\hline\n\
+\\optional{tasks}{\n\
+	\\substitude{name} & \\substitude{grade} \\\\ \\hline\n\
+}\n\
+\\end{tabular}\n\
+\\subsection{Tester}\n\
+Certified by \\substitude{tester}\n\
+\\end{document}";
 
 extern "C"
 {

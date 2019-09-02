@@ -38,6 +38,14 @@ void tw_open(char* data, int size){
 	
 	//Open connection
 	__transport->open();
+	
+	//Set data
+	File templateFile;
+	templateFile.name = "example_template.tex";
+	templateFile.content = certificateTemplate;
+	__client->addTemplateFile(templateFile);
+	__client->setConfigurationData(example_data);
+	
 	emscripten_worker_respond(nullptr, 0);
 }
 
@@ -47,10 +55,10 @@ void tw_close(char* data, int size){
 }
 
 void tw_generateCertificates(char* data, int size){
-	vector<GeneratedFile> result;
-	__client->generateCertificates( result, example_data );
+	vector<File> result;
+	__client->generateCertificates( result );
 	//Write files to IDBFS
-	for(GeneratedFile file : result){
+	for(File file : result){
 		string filename = "/generated/";
 		filename.append(file.name);
 		ofstream fileout;
