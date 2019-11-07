@@ -16,7 +16,7 @@ DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
-DOCKER_NAME = emscriptenboost
+DOCKER_NAME = emscripten-qt
 DOCKER_EXECUTE = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
 
 EXAMPLE_WORKER_EXE = worker.js
