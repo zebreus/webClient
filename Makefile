@@ -3,7 +3,9 @@ OUTPUT = ./out/
 MAIN = ./src/
 EXAMPLE_WORKER = ./src/example-worker/
 THRIFT_WORKER = ./src/thrift-worker/
+QT_WEBCLIENT = ./src/qt-webclient/
 THRIFT_GENERATED = $(THRIFT_WORKER)/gen-cpp/
+THRIFT_GENERATED_QT = $(QT_WEBCLIENT)/gen-cpp/
 IMGUI_GIT = ./libs/imgui/
 THRIFT = ./libs/thrift/
 EMS_SHELL = ./res/shell_minimal.html
@@ -18,6 +20,7 @@ BROWSER = chrome
 #dockerstuff
 DOCKER_NAME = emscripten-qt
 DOCKER_EXECUTE = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
+DOCKER_EXECUTE_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
 
 EXAMPLE_WORKER_EXE = worker.js
 EXAMPLE_WORKER_SOURCES = $(EXAMPLE_WORKER)/worker.cpp
@@ -105,7 +108,7 @@ $(THRIFT)/*/%.o:$(THRIFT)/*/%.cpp
 
 $(MAIN_EXE): $(OUTPUT)/$(MAIN_EXE)
 $(EXAMPLE_WORKER_EXE): $(OUTPUT)/$(EXAMPLE_WORKER_EXE)
-$(THRIFT_WORKER_EXE): thrift $(OUTPUT)/$(THRIFT_WORKER_EXE)
+$(THRIFT_WORKER_EXE): $(OUTPUT)/$(THRIFT_WORKER_EXE)
 
 $(OUTPUT)/$(MAIN_EXE): $(MAIN_OBJS)
 	mkdir -p $(OUTPUT)
@@ -119,30 +122,37 @@ $(OUTPUT)/$(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
 	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(THRIFT_WORKER_LDFLAGS)
 
-build: $(EXAMPLE_WORKER_EXE) $(MAIN_EXE) $(THRIFT_WORKER_EXE)
-	@echo Build complete for $(MAIN_EXE)
+build-thrift-worker: docker thrift
+	$(DOCKER_EXECUTE) make $(THRIFT_WORKER_EXE)
+
+build-qt: docker build-thrift-worker thrift
+	$(DOCKER_EXECUTE_QT) qmake
+	$(DOCKER_EXECUTE_QT) make
+	mkdir -p $(OUTPUT)
+	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
+
+build-old-main: docker build-thrift-worker
+	$(DOCKER_EXECUTE) make $(MAIN_EXE)
 
 clean:
 	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
+	- $(DOCKER_EXECUTE_QT) make clean
 
 distclean: clean
-	rm -rf docker.gen thrift.gen $(OUTPUT) $(THRIFT_GENERATED)
+	rm -rf docker.gen thrift.gen $(OUTPUT)/* $(THRIFT_GENERATED) $(THRIFT_GENERATED_QT)
+	- $(DOCKER_EXECUTE_QT) make distclean
 
 execute:
-	cd $(OUTPUT) ; emrun --browser=$(BROWSER) $(MAIN_EXE)
-	
+	cd $(OUTPUT) ; emrun --browser=$(BROWSER) qt-webclient.html
+
 thrift: thrift.gen
 	mkdir -p $(THRIFT_GENERATED)
-	thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE) 
+	mkdir -p $(THRIFT_GENERATED_QT)
+	$(DOCKER_EXECUTE) thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
+	$(DOCKER_EXECUTE) thrift --gen cpp -out $(THRIFT_GENERATED_QT) $(THRIFT_FILE)
 
 docker: docker.gen
 	$(DOCKER) build --tag=$(DOCKER_NAME) .
-	
-docker-build: docker docker-thrift
-	$(DOCKER_EXECUTE) make build
-	
-docker-thrift: docker thrift.gen
-	$(DOCKER_EXECUTE) make thrift
 	
 thrift.gen:
 	touch thrift.gen
