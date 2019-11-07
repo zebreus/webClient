@@ -1,5 +1,9 @@
 <RCC>
     <qresource prefix="/">
         <file>main.qml</file>
+        <file>CertificateGenerator.qml</file>
+        <file>CertificateGeneratorForm.ui.qml</file>
+        <file>FileListItem.qml</file>
+        <file>FileListItemForm.ui.qml</file>
     </qresource>
 </RCC>
