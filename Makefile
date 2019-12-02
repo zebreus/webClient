@@ -18,7 +18,7 @@ DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
-DOCKER_NAME = emscripten-qt
+DOCKER_NAME = madmanfred/qt-webassembly-boost:latest
 DOCKER_EXECUTE = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
 DOCKER_EXECUTE_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
 
