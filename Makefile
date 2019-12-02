@@ -1,7 +1,7 @@
 #paths
 OUTPUT = ./out/
 MAIN = ./src/
-EXAMPLE_WORKER = ./src/example-worker/
+IMGUI_WEBCLIENT = ./src/imgui-webclient/
 THRIFT_WORKER = ./src/thrift-worker/
 QT_WEBCLIENT = ./src/qt-webclient/
 THRIFT_GENERATED = $(THRIFT_WORKER)/gen-cpp/
@@ -59,22 +59,22 @@ THRIFT_WORKER_CPP += -I$(THRIFT_WORKER) -I$(THRIFT_GENERATED) -I$(THRIFT)/../
 THRIFT_WORKER_CPP += $(THRIFT_WORKER_EMS)
 THRIFT_WORKER_LDFLAGS = $(THRIFT_WORKER_EMS)
 
-MAIN_EXE = index.html
-MAIN_SOURCES = $(MAIN)/main.cpp
-MAIN_SOURCES += $(IMGUI_GIT)/examples/imgui_impl_sdl.cpp $(IMGUI_GIT)/examples/imgui_impl_opengl3.cpp
-MAIN_SOURCES += $(IMGUI_GIT)/imgui.cpp $(IMGUI_GIT)/imgui_demo.cpp $(IMGUI_GIT)/imgui_draw.cpp $(IMGUI_GIT)/imgui_widgets.cpp
-MAIN_OBJS = $(addsuffix .o, $(basename $(MAIN_SOURCES)))
-MAIN_EMS = --bind -s USE_SDL=2 -s WASM=1
-MAIN_EMS += -s ALLOW_MEMORY_GROWTH=0 -s BINARYEN_TRAP_MODE=clamp
-MAIN_EMS += -s DISABLE_EXCEPTION_CATCHING=1 -s NO_EXIT_RUNTIME=0
-MAIN_EMS += -s ASSERTIONS=1 -s NO_FILESYSTEM=0
-MAIN_EMS += -s ASYNCIFY=1 -s EXPORTED_FUNCTIONS='["_onerror", "_main"]'
-MAIN_EMS += -s EXTRA_EXPORTED_RUNTIME_METHODS=FS
-MAIN_CPP = -I$(IMGUI_GIT)/examples/ -I$(IMGUI_GIT)
-MAIN_CPP += -Wall -Wformat -Os -std=c++17
-MAIN_CPP += -DTHRIFT_WORKER_FILE=\"$(THRIFT_WORKER_EXE)\"
-MAIN_CPP += $(MAIN_EMS)
-MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
+IMGUI_WEBCLIENT_EXE = index.html
+IMGUI_WEBCLIENT_SOURCES = $(IMGUI_WEBCLIENT)/main.cpp
+IMGUI_WEBCLIENT_SOURCES += $(IMGUI_GIT)/examples/imgui_impl_sdl.cpp $(IMGUI_GIT)/examples/imgui_impl_opengl3.cpp
+IMGUI_WEBCLIENT_SOURCES += $(IMGUI_GIT)/imgui.cpp $(IMGUI_GIT)/imgui_demo.cpp $(IMGUI_GIT)/imgui_draw.cpp $(IMGUI_GIT)/imgui_widgets.cpp
+IMGUI_WEBCLIENT_OBJS = $(addsuffix .o, $(basename $(IMGUI_WEBCLIENT_SOURCES)))
+IMGUI_WEBCLIENT_EMS = --bind -s USE_SDL=2 -s WASM=1
+IMGUI_WEBCLIENT_EMS += -s ALLOW_MEMORY_GROWTH=0 -s BINARYEN_TRAP_MODE=clamp
+IMGUI_WEBCLIENT_EMS += -s DISABLE_EXCEPTION_CATCHING=1 -s NO_EXIT_RUNTIME=0
+IMGUI_WEBCLIENT_EMS += -s ASSERTIONS=1 -s NO_FILESYSTEM=0
+IMGUI_WEBCLIENT_EMS += -s ASYNCIFY=1 -s EXPORTED_FUNCTIONS='["_onerror", "_main"]'
+IMGUI_WEBCLIENT_EMS += -s EXTRA_EXPORTED_RUNTIME_METHODS=FS
+IMGUI_WEBCLIENT_CPP = -I$(IMGUI_GIT)/examples/ -I$(IMGUI_GIT)
+IMGUI_WEBCLIENT_CPP += -Wall -Wformat -Os -std=c++17
+IMGUI_WEBCLIENT_CPP += -DTHRIFT_WORKER_FILE=\"$(THRIFT_WORKER_EXE)\"
+IMGUI_WEBCLIENT_CPP += $(IMGUI_WEBCLIENT_EMS)
+IMGUI_WEBCLIENT_LDFLAGS = $(IMGUI_WEBCLIENT_EMS) --shell-file $(EMS_SHELL)
 
 ##---------------------------------------------------------------------
 ## BUILD RULES
@@ -82,15 +82,15 @@ MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 
 all: build-qt
 
-$(MAIN)/%.o:$(MAIN)/%.cpp
-	echo OJS: $(MAIN_OBJS) ENDS
-	$(CXX) $(MAIN_CPP) $(CXXFLAGS) -c -o $@ $<
+$(IMGUI_WEBCLIENT)/%.o:$(IMGUI_WEBCLIENT)/%.cpp
+	echo OJS: $(IMGUI_WEBCLIENT_OBJS) ENDS
+	$(CXX) $(IMGUI_WEBCLIENT_CPP) $(CXXFLAGS) -c -o $@ $<
 
 $(IMGUI_GIT)/examples/%.o:$(IMGUI_GIT)/examples/%.cpp
-	$(CXX) $(MAIN_CPP) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(IMGUI_WEBCLIENT_CPP) $(CXXFLAGS) -c -o $@ $<
 
 $(IMGUI_GIT)/%.o:$(IMGUI_GIT)/%.cpp
-	$(CXX) $(MAIN_CPP) $(CXXFLAGS) -c -o $@ $<
+	$(CXX) $(IMGUI_WEBCLIENT_CPP) $(CXXFLAGS) -c -o $@ $<
 
 $(EXAMPLE_WORKER)/%.o:$(EXAMPLE_WORKER)/%.cpp
 	$(CXX) $(EXAMPLE_WORKER_CPP) $(CXXFLAGS) -c -o $@ $<
@@ -107,13 +107,13 @@ $(THRIFT)/%.o:$(THRIFT)/%.cpp
 $(THRIFT)/*/%.o:$(THRIFT)/*/%.cpp
 	$(CXX) $(THRIFT_WORKER_CPP) $(CXXFLAGS) -c -o $@ $<
 
-$(MAIN_EXE): $(OUTPUT)/$(MAIN_EXE)
+$(IMGUI_WEBCLIENT_EXE): $(OUTPUT)/$(IMGUI_WEBCLIENT_EXE)
 $(EXAMPLE_WORKER_EXE): $(OUTPUT)/$(EXAMPLE_WORKER_EXE)
 $(THRIFT_WORKER_EXE): $(OUTPUT)/$(THRIFT_WORKER_EXE)
 
-$(OUTPUT)/$(MAIN_EXE): $(MAIN_OBJS)
+$(OUTPUT)/$(IMGUI_WEBCLIENT_EXE): $(IMGUI_WEBCLIENT_OBJS)
 	mkdir -p $(OUTPUT)
-	$(CXX) -o $@ $^ $(MAIN_LDFLAGS)
+	$(CXX) -o $@ $^ $(IMGUI_WEBCLIENT_LDFLAGS)
 
 $(OUTPUT)/$(EXAMPLE_WORKER_EXE): $(EXAMPLE_WORKER_OBJS)
 	mkdir -p $(OUTPUT)
@@ -132,16 +132,16 @@ build-qt: build-thrift-worker thrift
 	mkdir -p $(OUTPUT)
 	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
 
-build-old-main: docker build-thrift-worker
-	$(DOCKER_EXECUTE) make $(MAIN_EXE)
+build-old-main: build-thrift-worker
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make $(IMGUI_WEBCLIENT_EXE)
 
 clean:
 	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
-	- $(DOCKER_EXECUTE_QT) make clean
+	- $(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make clean
 
 distclean: clean
 	rm -rf docker.gen thrift.gen $(OUTPUT)/* $(THRIFT_GENERATED) $(THRIFT_GENERATED_QT)
-	- $(DOCKER_EXECUTE_QT) make distclean
+	- $(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make distclean
 
 execute:
 	cd $(OUTPUT) ; emrun --browser=$(BROWSER) qt-webclient.html
