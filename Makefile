@@ -18,7 +18,7 @@ DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
-DOCKER_CONTAINER_QT = madmanfred/qt-webassembly:latest
+DOCKER_CONTAINER_QT = madmanfred/qt-webassembly-boost:latest
 DOCKER_CONTAINER_THRIFT = cspwizard/thrift:0.13.0
 DOCKER_RUN = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) -w /src/
 DOCKER_RUN_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) -w /src
