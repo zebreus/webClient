@@ -18,9 +18,10 @@ DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
-DOCKER_NAME = madmanfred/qt-webassembly-boost:latest
-DOCKER_EXECUTE = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
-DOCKER_EXECUTE_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) $(DOCKER_NAME)
+DOCKER_CONTAINER_QT = madmanfred/qt-webassembly:latest
+DOCKER_CONTAINER_THRIFT = cspwizard/thrift:0.13.0
+DOCKER_RUN = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) -w /src/
+DOCKER_RUN_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) -w /src
 
 EXAMPLE_WORKER_EXE = worker.js
 EXAMPLE_WORKER_SOURCES = $(EXAMPLE_WORKER)/worker.cpp
@@ -79,7 +80,7 @@ MAIN_LDFLAGS = $(MAIN_EMS) --shell-file $(EMS_SHELL)
 ## BUILD RULES
 ##---------------------------------------------------------------------
 
-all: docker-build
+all: build-qt
 
 $(MAIN)/%.o:$(MAIN)/%.cpp
 	echo OJS: $(MAIN_OBJS) ENDS
@@ -122,12 +123,12 @@ $(OUTPUT)/$(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
 	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(THRIFT_WORKER_LDFLAGS)
 
-build-thrift-worker: docker thrift
-	$(DOCKER_EXECUTE) make $(THRIFT_WORKER_EXE)
+build-thrift-worker: thrift
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make $(THRIFT_WORKER_EXE)
 
-build-qt: docker build-thrift-worker thrift
-	$(DOCKER_EXECUTE_QT) qmake
-	$(DOCKER_EXECUTE_QT) make
+build-qt: build-thrift-worker thrift
+	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) qmake
+	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make
 	mkdir -p $(OUTPUT)
 	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
 
@@ -148,14 +149,8 @@ execute:
 thrift: thrift.gen
 	mkdir -p $(THRIFT_GENERATED)
 	mkdir -p $(THRIFT_GENERATED_QT)
-	$(DOCKER_EXECUTE) thrift --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
-	$(DOCKER_EXECUTE) thrift --gen cpp -out $(THRIFT_GENERATED_QT) $(THRIFT_FILE)
-
-docker: docker.gen
-	$(DOCKER) build --tag=$(DOCKER_NAME) .
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_THRIFT) --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_THRIFT) --gen cpp -out $(THRIFT_GENERATED_QT) $(THRIFT_FILE)
 	
 thrift.gen:
 	touch thrift.gen
-	
-docker.gen:
-	touch docker.gen
