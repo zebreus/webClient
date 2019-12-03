@@ -3,7 +3,7 @@ ARG HTTPD_BASE=
 FROM $HTTPD_BASE
 MAINTAINER Lennart E.
 
-ARG CONTENT .
+ARG CONTENT=
 
 #copy in certificate generator server
 COPY ${CONTENT} /usr/local/apache2/htdocs/
