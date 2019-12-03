@@ -18,7 +18,8 @@ DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
-DOCKER_CONTAINER_QT = madmanfred/qt-webassembly-boost:latest
+DOCKER_CONTAINER_BOOST = madmanfred/qt-webassembly-boost
+DOCKER_CONTAINER_QT = madmanfred/qt-webassembly:qt5.14-em1.39.0
 DOCKER_CONTAINER_THRIFT = cspwizard/thrift:0.13.0
 DOCKER_RUN = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) -w /src/
 DOCKER_RUN_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) -w /src
@@ -124,10 +125,10 @@ $(OUTPUT)/$(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
 	$(CXX) -o $@ $^ $(THRIFT_WORKER_LDFLAGS)
 
 build-thrift-worker: thrift
-	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make $(THRIFT_WORKER_EXE)
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_BOOST) make $(THRIFT_WORKER_EXE)
 
 build-qt: build-thrift-worker thrift
-	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) qmake
+	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) /qtbase/bin/qmake
 	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make
 	mkdir -p $(OUTPUT)
 	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
