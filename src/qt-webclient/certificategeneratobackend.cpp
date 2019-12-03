@@ -2,9 +2,9 @@
 
 CertificateGeneratorBackend::CertificateGeneratorBackend(QObject *parent) : QObject(parent)
 {
-    m_hostName = "localhost";
+    m_hostName = "generator.einhorn.jetzt";
     m_state = CLOSED;
-    m_useWss = false;
+    m_useWss = true;
     m_hostPort = 443;
     gc = new CertificateGeneratorConnection();
     connect(gc, &CertificateGeneratorConnection::connectionEstablished, this, &CertificateGeneratorBackend::connectionEstablished);
