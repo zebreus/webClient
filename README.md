@@ -1,6 +1,12 @@
 # WebClient
 The web based client for the certificate generator.
 
+
+## Status
+
+[<p align="center"><img src="https://images.madmanfred.com/webclient-status.jpg"></p>](https://concourse.einhorn.jetzt/teams/main/pipelines/webclient)
+
+
 ## Installation
 Just run `make all`, to generate the html js and wasm files to `output/`.
 
