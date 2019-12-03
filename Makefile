@@ -14,15 +14,16 @@ THRIFT_FILE = ./res/CertificateGenerator.thrift
 #compiler
 CC = emcc --emrun
 CXX = em++ --emrun
+THRIFTC = thrift
 DOCKER = docker
 BROWSER = chrome
 
 #dockerstuff
 DOCKER_CONTAINER_BOOST = madmanfred/qt-webassembly-boost
-DOCKER_CONTAINER_QT = madmanfred/qt-webassembly:qt5.14-em1.39.0
+DOCKER_CONTAINER_QT = madmanfred/qt-webassembly:qt5.14-em1.38.30
+DOCKER_CONTAINER_IMGUI = trzeci/emscripten:sdk-tag-1.38.30-64bit
 DOCKER_CONTAINER_THRIFT = cspwizard/thrift:0.13.0
 DOCKER_RUN = $(DOCKER) run --rm -v $$(pwd):/src/ -u $$(id -u):$$(id -g) -w /src/
-DOCKER_RUN_QT = $(DOCKER) run --rm -v $$(pwd)/src/qt-webclient/:/src/ -u $$(id -u):$$(id -g) -w /src
 
 EXAMPLE_WORKER_EXE = worker.js
 EXAMPLE_WORKER_SOURCES = $(EXAMPLE_WORKER)/worker.cpp
@@ -79,9 +80,13 @@ IMGUI_WEBCLIENT_LDFLAGS = $(IMGUI_WEBCLIENT_EMS) --shell-file $(EMS_SHELL)
 
 ##---------------------------------------------------------------------
 ## BUILD RULES
+##
+## The internal-*** targets build locally without building the other targets
+## The *** targets build locally
+## The docker-*** targets build in containers, so you don't have to install the compilers.
 ##---------------------------------------------------------------------
 
-all: build-qt
+all: docker-qt
 
 $(IMGUI_WEBCLIENT)/%.o:$(IMGUI_WEBCLIENT)/%.cpp
 	echo OJS: $(IMGUI_WEBCLIENT_OBJS) ENDS
@@ -124,34 +129,81 @@ $(OUTPUT)/$(THRIFT_WORKER_EXE): $(THRIFT_WORKER_OBJS)
 	mkdir -p $(OUTPUT)
 	$(CXX) -o $@ $^ $(THRIFT_WORKER_LDFLAGS)
 
-build-thrift-worker: thrift
-	$(DOCKER_RUN) $(DOCKER_CONTAINER_BOOST) make $(THRIFT_WORKER_EXE)
+#The plain targets link to the docker targets
+thrift-worker: docker-thrift-worker
 
-build-qt: build-thrift-worker thrift
-	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) /qtbase/bin/qmake
-	$(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make
+qt: docker-qt
+
+imgui: docker-imgui
+
+thrift: docker-thrift
+
+clean: docker-clean
+
+distclean: docker-distclean
+
+#The execute targets start the applications
+execute-qt:
+	cd $(OUTPUT) ; emrun --browser=$(BROWSER) qt-webclient.html
+
+execute-imgui:
+	cd $(OUTPUT) ; emrun --browser=$(BROWSER) index.html
+
+#The internal targets do the stuff
+internal-thrift-worker:
+	make $(THRIFT_WORKER_EXE)
+
+internal-qt:
+	cd $(QT_WEBCLIENT) ; qmake
+	cd $(QT_WEBCLIENT) ; make
 	mkdir -p $(OUTPUT)
 	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
 
-build-old-main: build-thrift-worker
-	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make $(IMGUI_WEBCLIENT_EXE)
+internal-imgui:
+	make $(IMGUI_WEBCLIENT_EXE)
 
-clean:
-	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
-	- $(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make clean
-
-distclean: clean
-	rm -rf docker.gen thrift.gen $(OUTPUT)/* $(THRIFT_GENERATED) $(THRIFT_GENERATED_QT)
-	- $(DOCKER_RUN_QT) $(DOCKER_CONTAINER_QT) make distclean
-
-execute:
-	cd $(OUTPUT) ; emrun --browser=$(BROWSER) qt-webclient.html
-
-thrift: thrift.gen
+internal-thrift:
 	mkdir -p $(THRIFT_GENERATED)
 	mkdir -p $(THRIFT_GENERATED_QT)
-	$(DOCKER_RUN) $(DOCKER_CONTAINER_THRIFT) --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
-	$(DOCKER_RUN) $(DOCKER_CONTAINER_THRIFT) --gen cpp -out $(THRIFT_GENERATED_QT) $(THRIFT_FILE)
-	
-thrift.gen:
-	touch thrift.gen
+	$(THRIFTC) --gen cpp -out $(THRIFT_GENERATED) $(THRIFT_FILE)
+	$(THRIFTC) --gen cpp -out $(THRIFT_GENERATED_QT) $(THRIFT_FILE)
+
+internal-clean:
+	rm -f $(MAIN_OBJS) $(EXAMPLE_WORKER_OBJS) $(THRIFT_WORKER_OBJS)
+	- cd $(QT_WEBCLIENT) ; make clean
+
+internal-distclean: clean
+	rm -rf docker.gen thrift.gen $(OUTPUT)/* $(THRIFT_GENERATED) $(THRIFT_GENERATED_QT)
+	- cd $(QT_WEBCLIENT) ; make distclean
+
+#The local targets make with the locally installed dependencies
+local-thrift-worker: local-thrift internal-thrift-worker
+
+local-qt: local-thrift-worker local-thrift internal-qt
+
+local-imgui: local-thrift-worker internal-imgui
+
+local-thrift: internal-thrift
+
+local-clean: internal-clean
+
+local-distclean: local-clean internal-distclean
+
+#The docker targets make in docker containers containing the dependencies
+docker-thrift-worker: docker-thrift
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_BOOST) make internal-thrift-worker
+
+docker-qt: docker-thrift-worker docker-thrift
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make internal-qt
+
+docker-imgui: docker-thrift-worker
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_IMGUI) make internal-imgui
+
+docker-thrift:
+	make internal-thrift THRIFTC="$(DOCKER_RUN) $(DOCKER_CONTAINER_THRIFT)"
+
+docker-clean:
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make internal-clean
+
+docker-distclean: docker-clean
+	$(DOCKER_RUN) $(DOCKER_CONTAINER_QT) make internal-distclean
