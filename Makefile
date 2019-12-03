@@ -157,7 +157,11 @@ internal-qt:
 	cd $(QT_WEBCLIENT) ; qmake
 	cd $(QT_WEBCLIENT) ; make
 	mkdir -p $(OUTPUT)
-	cp $(QT_WEBCLIENT)/{qt-webclient.html,qt-webclient.wasm,qt-webclient.js,qtloader.js,qtlogo.svg} $(OUTPUT)
+	cp $(QT_WEBCLIENT)/qt-webclient.html $(OUTPUT)
+	cp $(QT_WEBCLIENT)/qt-webclient.wasm $(OUTPUT)
+	cp $(QT_WEBCLIENT)/qt-webclient.js $(OUTPUT)
+	cp $(QT_WEBCLIENT)/qtloader.js $(OUTPUT)
+	cp $(QT_WEBCLIENT)/qtlogo.svg $(OUTPUT)
 
 internal-imgui:
 	make $(IMGUI_WEBCLIENT_EXE)
